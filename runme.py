@@ -3,6 +3,7 @@ import csv
 import configparser
 import datetime
 import re
+import os
 
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -19,7 +20,12 @@ class MainScreen(QMainWindow, Ui_MainWindow):
         super(MainScreen, self).__init__(parent)
         self.setupUi(self)
         self.config = configparser.ConfigParser()
-        self.config.read("data.ini")
+
+        # creates the connection to the files or creates them
+        self.data_name = "data.ini"
+        self.event_name = "events.csv"
+        self.check_files()
+        self.config.read(self.data_name)
         self.price = float(self.config['data']['price'])
         self.balance = float(self.config['data']['balance'])
 
@@ -57,17 +63,40 @@ class MainScreen(QMainWindow, Ui_MainWindow):
         is_event1 = 1 if self.CB_event1.isChecked() else 0
         is_event2 = 1 if self.CB_event2.isChecked() else 0
         log_time = self.dateTimeEdit.dateTime().toString(Qt.ISODate).replace("T", " ")
-        with open('events.csv', 'a', newline="") as csvfile:
+        with open(self.event_name, 'a', newline="") as csvfile:
             datawriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
             datawriter.writerow([is_event1, is_event2, log_time])
 
     def update_balance_text(self):
+        # choose the appropriate color
+        if self.balance > 0:
+            self.L_money.setStyleSheet('color: rgb(34,139,34)')
+        elif self.balance < 0:
+            self.L_money.setStyleSheet('color: rgb(255, 0, 0)')
+        else:
+            self.L_money.setStyleSheet('color: rgb(0,0,0)')
         self.L_money.setText(f"{round(self.balance,2):.2f} €")
 
     def write_configfile(self):
         self.config['data']['balance'] = str(round(self.balance, 2))
-        with open("data.ini", 'w') as configfile:
+        with open(self.data_name, 'w') as configfile:
             self.config.write(configfile)
+
+    def check_files(self):
+        if not os.path.isfile(self.data_name):
+            self.create_datafile()
+        if not os.path.isfile(self.event_name):
+            self.create_eventfile()
+
+    def create_datafile(self):
+        self.config['data'] = {'balance': str(0), 'price': str(0.20)}
+        with open(self.data_name, 'w') as configfile:
+            self.config.write(configfile)
+
+    def create_eventfile(self):
+        with open(self.event_name, 'w', newline="") as csvfile:
+            datawriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            datawriter.writerow(["is_event1", "is_event2", "log_time"])
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
